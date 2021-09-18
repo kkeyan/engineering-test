@@ -142,6 +142,64 @@ export class GroupController {
       .getRawMany()
   }
 
+  _buildCondition(queryParams){
+    let conditions = ""
+      if (queryParams.number_of_weeks) {
+        conditions = ` ${conditions} "group"."number_of_weeks" = ${queryParams.number_of_weeks}`
+      }
+      if (queryParams.roll_states && queryParams.roll_states !="") {
+        if (typeof (queryParams.roll_states) == 'string') {
+          conditions = ` ${conditions} ${conditions == "" ? "" : "AND"} "group"."roll_states" = '${queryParams.roll_states}'`
+        }
+        else if (typeof (queryParams.roll_states) == 'object') {
+          conditions = ` ${conditions} ${conditions == "" ? "" : "AND"} "group"."roll_states" IN (${queryParams.roll_states.map(state => { return `"${state}"` })})`
+        }
+        console.log(conditions)
+      }
+      if (queryParams.ltmt) {
+        conditions = ` ${conditions} ${conditions == "" ? "" : "AND"} "group"."ltmt" = '${queryParams.ltmt}'`
+      }
+      if (queryParams.incidents) {
+        const incidentExpression = queryParams.incidents.split(' ')
+        if (incidentExpression.length == 2) {
+          let incidentQury = ""
+          switch (incidentExpression[0]) {
+            case '<': incidentQury = ` "group"."incidents" < ${incidentExpression[1]}`
+              break
+            case '>': incidentQury = ` "group"."incidents" > ${incidentExpression[1]}`
+              break
+            default: incidentQury = ` "group"."incidents" = ${incidentExpression[1]}`
+              break
+          }
+          conditions = ` ${conditions} ${conditions == "" ? "" : "AND"} ${incidentQury}`
+        }
+
+      }
+    return conditions
+  }
+  /**
+   * 
+   * @param queryParams 
+   * 
+    Time Period in Weeks (number_of_weeks), backwards in time from the date/time Now, AND
+    One or more Roll States: "unmark" | "present" | "absent" | "late" (roll_states), AND
+    (Greater than the Number of Incidents in the Time Period, OR
+    Less then the Number of Incidents in the Time Period) (ltmt and incidents)
+
+   * @returns matching Groups
+   */
+  async _getAllMatchingGroups(queryParams) {
+    if (queryParams == {} || queryParams == undefined) {
+      return this.groupRepository.find()
+    }
+    else {
+      const conditions = this._buildCondition(queryParams)
+      const matchingGroups = await this.groupRepository
+        .createQueryBuilder("group").where(conditions).getMany()
+      return matchingGroups
+    }
+  }
+
   /**
      * The Students currently in each Group will be deleted
      * The Filter will be run against each Group and the Group populated with Students that match the filter based on their roll data. It will also store the number of incidents for the Student in the incident_count field.
@@ -149,10 +207,12 @@ export class GroupController {
      * The number of students in the group, student_count, will be stored against the Group
    */
   async runGroupFilters(request: Request, response: Response, next: NextFunction) {
+    const queryParams = request.body
+
     try {
       await this._removeAllGroups()
 
-      const groups = await this.groupRepository.find()
+      const groups = await this._getAllMatchingGroups(queryParams)
       let students_in_group = []
 
       for (const group of groups) {
