@@ -154,7 +154,6 @@ export class GroupController {
         else if (typeof (queryParams.roll_states) == 'object') {
           conditions = ` ${conditions} ${conditions == "" ? "" : "AND"} "group"."roll_states" IN (${queryParams.roll_states.map(state => { return `"${state}"` })})`
         }
-        console.log(conditions)
       }
       if (queryParams.ltmt) {
         conditions = ` ${conditions} ${conditions == "" ? "" : "AND"} "group"."ltmt" = '${queryParams.ltmt}'`
