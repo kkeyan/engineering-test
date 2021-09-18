@@ -13,7 +13,10 @@ export class RollController {
   async allRolls(request: Request, response: Response, next: NextFunction) {
     return this.rollRepository.find()
   }
-
+  
+  async getAllRoll(request: Request, response: Response, next: NextFunction) {
+    return this.studentRollStateRepository.find()
+  }
   async createRoll(request: Request, response: Response, next: NextFunction) {
     const { body: params } = request
 
@@ -46,6 +49,7 @@ export class RollController {
   }
 
   async getRoll(request: Request, response: Response, next: NextFunction) {
+    console.log("Get roll called", request.query.id)
     return this.studentRollStateRepository.find({ roll_id: request.params.id })
   }
 
